@@ -1,0 +1,13 @@
+# Local .terraform folder
+.terraform/
+
+# State files (SENSITIVE)
+*.tfstate
+*.tfstate.backup
+
+# Variable files (SENSITIVE - often contains passwords)
+*.tfvars
+*.tfvars.json
+
+# Ignore lock file if you want, or keep it (usually ignored in teams)
+.terraform.lock.hcl

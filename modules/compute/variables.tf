@@ -1,0 +1,10 @@
+variable "location" {}
+variable "resource_group_name" {}
+variable "vm_size" {}
+variable "admin_username" {}
+variable "public_subnet_id" {}
+variable "private_subnet_id" {}
+variable "bastion_public_key_path" {}
+variable "web_public_key_path" {}
+variable "db_subnet_id" {}
+variable "db_public_key_path" {}
