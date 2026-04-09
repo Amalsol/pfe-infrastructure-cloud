@@ -3,7 +3,6 @@ name: "Terraform CI/CD Azure"
 on:
   push:
     branches: [ "main" ]
-# J'ai supprimé pull_request ici pour éviter les conflits
 
 env:
   ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -23,7 +22,6 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # ÉTAPE 7 : Scan de sécurité (tfsec)
       - name: TFSec Check
         uses: aquasecurity/tfsec-action@v1.0.0
         with:
@@ -35,9 +33,9 @@ jobs:
       - name: Terraform Format
         run: terraform fmt -recursive
 
-      # ÉTAPE 5 : Plan (Optionnel ici car on est sur main)
+      # ÉTAPE 5 : Plan (AJOUT DE -lock=false ICI AUSSI)
       - name: Terraform Plan
-        run: terraform plan
+        run: terraform plan -lock=false
 
       # ÉTAPE 6 : Apply (FORCÉ sans verrou)
       - name: Terraform Apply
