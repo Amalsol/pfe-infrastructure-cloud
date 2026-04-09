@@ -19,19 +19,19 @@ module "security" {
   public_subnet_id    = module.network.public_subnet_id
   private_subnet_id   = module.network.private_subnet_id
   db_subnet_id        = module.network.db_subnet_id
- 
+
 }
 
 module "compute" {
-  source                   = "./modules/compute"
-  location                 = azurerm_resource_group.rg.location
-  resource_group_name      = azurerm_resource_group.rg.name
-  vm_size                  = var.vm_size
-  admin_username           = var.admin_username
-  public_subnet_id         = module.network.public_subnet_id
-  private_subnet_id        = module.network.private_subnet_id
-  db_subnet_id             = module.network.db_subnet_id
-  bastion_public_key_path  = "C:/Users/user/.ssh/bastion-vm_key.pem.pub"
-  web_public_key_path      = "C:/Users/user/.ssh/web-vm_key.pem.pub"
-  db_public_key_path       = "C:/Users/user/.ssh/db-vm_key.pem.pub"
+  source                  = "./modules/compute"
+  location                = azurerm_resource_group.rg.location
+  resource_group_name     = azurerm_resource_group.rg.name
+  vm_size                 = var.vm_size
+  admin_username          = var.admin_username
+  public_subnet_id        = module.network.public_subnet_id
+  private_subnet_id       = module.network.private_subnet_id
+  db_subnet_id            = module.network.db_subnet_id
+  bastion_public_key_path = "C:/Users/user/.ssh/bastion-vm_key.pem.pub"
+  web_public_key_path     = "C:/Users/user/.ssh/web-vm_key.pem.pub"
+  db_public_key_path      = "C:/Users/user/.ssh/db-vm_key.pem.pub"
 }
