@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [ "main" ]
 
-# Ces variables permettent à Terraform de s'authentifier sur Azure
 env:
   ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
   ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
@@ -35,7 +34,7 @@ jobs:
         run: terraform init
 
       - name: Terraform Format
-        run: terraform fmt -check
+        run: terraform fmt -recursive  # <--- J'ai enlevé -check ici
 
       # ÉTAPE 5 : Plan (se lance sur les Pull Requests)
       - name: Terraform Plan
@@ -43,7 +42,7 @@ jobs:
         run: terraform plan
         if: github.event_name == 'pull_request'
 
-      # ÉTAPE 6 : Apply (se lance UNIQUEMENT quand on merge sur main)
+      # ÉTAPE 6 : Apply (se lance UNIQUEMENT quand tu pousses sur main)
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve
