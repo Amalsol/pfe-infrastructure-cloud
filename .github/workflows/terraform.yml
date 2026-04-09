@@ -9,6 +9,8 @@ env:
   ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  # ON AJOUTE L'IP ICI POUR RÉPONDRE À LA QUESTION DE TERRAFORM
+  TF_VAR_admin_ip: "0.0.0.0/0" 
 
 jobs:
   terraform:
@@ -33,11 +35,10 @@ jobs:
       - name: Terraform Format
         run: terraform fmt -recursive
 
-      # ÉTAPE 5 : Plan (AJOUT DE -lock=false ICI AUSSI)
+      # On ajoute -input=false pour être sûr que Terraform ne pose jamais de question
       - name: Terraform Plan
-        run: terraform plan -lock=false
+        run: terraform plan -lock=false -input=false
 
-      # ÉTAPE 6 : Apply (FORCÉ sans verrou)
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve -lock=false
+        run: terraform apply -auto-approve -lock=false -input=false
