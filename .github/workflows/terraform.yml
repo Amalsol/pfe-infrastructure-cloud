@@ -1,0 +1,49 @@
+name: "Terraform CI/CD Azure"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Ces variables permettent à Terraform de s'authentifier sur Azure
+env:
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+jobs:
+  terraform:
+    name: "Terraform Job"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # ÉTAPE 7 : Scan de sécurité (tfsec)
+      - name: TFSec Check
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          soft_fail: true 
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      # ÉTAPE 5 : Plan (se lance sur les Pull Requests)
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan
+        if: github.event_name == 'pull_request'
+
+      # ÉTAPE 6 : Apply (se lance UNIQUEMENT quand on merge sur main)
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve
