@@ -31,7 +31,9 @@ module "compute" {
   public_subnet_id        = module.network.public_subnet_id
   private_subnet_id       = module.network.private_subnet_id
   db_subnet_id            = module.network.db_subnet_id
-  bastion_public_key_path = "C:/Users/user/.ssh/bastion-vm_key.pem.pub"
-  web_public_key_path     = "C:/Users/user/.ssh/web-vm_key.pem.pub"
-  db_public_key_path      = "C:/Users/user/.ssh/db-vm_key.pem.pub"
+  
+  # ON UTILISE LES VARIABLES MAINTENANT (Pas de "C:/...")
+  bastion_public_key_path = var.bastion_public_key_path
+  web_public_key_path     = var.web_public_key_path
+  db_public_key_path      = var.db_public_key_path
 }
