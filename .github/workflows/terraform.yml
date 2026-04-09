@@ -10,7 +10,11 @@ env:
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   TF_VAR_admin_ip: "0.0.0.0/0"
-  # ON DIT À TERRAFORM QUE LES CLÉS SONT DANS LE DOSSIER ./keys/
+  
+  # ON FORCE LA TAILLE DE LA VM ICI POUR ÉVITER L'ERREUR DE STOCK (SKU)
+  TF_VAR_vm_size: "Standard_DS1_v2" 
+  
+  # CHEMINS DES CLÉS DANS TON PROJET GITHUB
   TF_VAR_bastion_public_key_path: "./keys/bastion-vm_key.pem.pub"
   TF_VAR_web_public_key_path: "./keys/web-vm_key.pem.pub"
   TF_VAR_db_public_key_path: "./keys/db-vm_key.pem.pub" 
@@ -38,7 +42,6 @@ jobs:
       - name: Terraform Format
         run: terraform fmt -recursive
 
-      # On ajoute -input=false pour être sûr que Terraform ne pose jamais de question
       - name: Terraform Plan
         run: terraform plan -lock=false -input=false
 
