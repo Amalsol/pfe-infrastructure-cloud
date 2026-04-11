@@ -7,10 +7,14 @@ on:
     branches: [ "main" ]
 
 env:
+  # ── Authentification Azure ──────────────────────────
   ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
   ARM_CLIENT_SECRET:   ${{ secrets.AZURE_CLIENT_SECRET }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+  ARM_ACCESS_KEY:      ${{ secrets.AZURE_STORAGE_KEY }}
+
+  # ── Variables Terraform ─────────────────────────────
   TF_VAR_admin_ip:              "0.0.0.0/0"
   TF_VAR_vm_size:               "Standard_B2ls_v2"
   TF_VAR_bastion_public_key_path: "./keys/bastion-vm_key.pem.pub"
@@ -41,6 +45,19 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+
+      - name: Break State Lease if Locked
+        run: |
+          az login --service-principal \
+            -u ${{ secrets.AZURE_CLIENT_ID }} \
+            -p ${{ secrets.AZURE_CLIENT_SECRET }} \
+            --tenant ${{ secrets.AZURE_TENANT_ID }}
+          az storage blob lease break \
+            --blob-name tfstate/pfe.terraform.tfstate \
+            --container-name tfstate \
+            --account-name tfstatepfe2026 \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }}
+        continue-on-error: true
 
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
