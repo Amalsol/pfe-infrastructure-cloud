@@ -1,0 +1,29 @@
+{
+  "location": "francecentral",
+  "properties": {
+    "dataSources": {
+      "syslog": [
+        {
+          "name": "syslogSource",
+          "streams": ["Microsoft-Syslog"],
+          "facilityNames": ["*"],
+          "logLevels": ["*"]
+        }
+      ]
+    },
+    "destinations": {
+      "logAnalytics": [
+        {
+          "workspaceResourceId": "/subscriptions/bcfaf579-2539-4800-858a-cc8beb5ef0ae/resourceGroups/rg-pfe-cloud/providers/Microsoft.OperationalInsights/workspaces/law-pfe",
+          "name": "logdest"
+        }
+      ]
+    },
+    "dataFlows": [
+      {
+        "streams": ["Microsoft-Syslog"],
+        "destinations": ["logdest"]
+      }
+    ]
+  }
+}

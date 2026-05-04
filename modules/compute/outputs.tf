@@ -8,3 +8,6 @@ output "web_vm_private_ip" {
 output "db_vm_private_ip" {
   value = azurerm_linux_virtual_machine.db.private_ip_address
 }
+output "appgw_public_ip" {
+  value = azurerm_public_ip.appgw_pip.ip_address
+}
