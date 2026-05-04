@@ -12,6 +12,3 @@ output "vnet_name" {
 output "db_subnet_id" {
   value = azurerm_subnet.db.id
 }
-output "appgw_subnet_id" {
-  value = azurerm_subnet.appgw.id
-}

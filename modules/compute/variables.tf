@@ -8,4 +8,3 @@ variable "bastion_public_key_path" {}
 variable "web_public_key_path" {}
 variable "db_subnet_id" {}
 variable "db_public_key_path" {}
-variable "appgw_subnet_id" {}
