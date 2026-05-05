@@ -9,4 +9,3 @@ output "web_vm_private_ip" {
 output "db_vm_private_ip" {
   value = module.compute.db_vm_private_ip
 }
-

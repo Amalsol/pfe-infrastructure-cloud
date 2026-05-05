@@ -8,14 +8,16 @@
 # ─────────────────────────────────────────────────────
 # Resource Group — Conteneur de toutes les ressources
 # ─────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────
+# PFE — Infrastructure Cloud Sécurisée avec Terraform
+# ─────────────────────────────────────────────────────
+
 resource "azurerm_resource_group" "rg" {
   name     = var.resource_group_name
   location = var.location
 }
 
-# ─────────────────────────────────────────────────────
-# Module Network — VNet + Subnets (public, web, db)
-# ─────────────────────────────────────────────────────
 module "network" {
   source              = "./modules/network"
   vnet_name           = var.vnet_name
@@ -44,7 +46,6 @@ module "compute" {
   public_subnet_id        = module.network.public_subnet_id
   private_subnet_id       = module.network.private_subnet_id
   db_subnet_id            = module.network.db_subnet_id
- 
   bastion_public_key_path = var.bastion_public_key_path
   web_public_key_path     = var.web_public_key_path
   db_public_key_path      = var.db_public_key_path
