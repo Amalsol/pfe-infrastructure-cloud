@@ -1,28 +1,41 @@
 name: "Terraform CI/CD — PFE Infrastructure Cloud"
+
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+
 env:
   ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
   ARM_CLIENT_SECRET:   ${{ secrets.AZURE_CLIENT_SECRET }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
   ARM_ACCESS_KEY:      ${{ secrets.AZURE_STORAGE_KEY }}
-  TF_VAR_admin_ip:              "0.0.0.0/0"
-  TF_VAR_vm_size:               "Standard_B2ls_v2"
+  TF_VAR_admin_ip:                "0.0.0.0/0"
+  TF_VAR_vm_size:                 "Standard_B2ls_v2"
   TF_VAR_bastion_public_key_path: "./keys/bastion-vm_key.pem.pub"
   TF_VAR_web_public_key_path:     "./keys/web-vm_key.pem.pub"
   TF_VAR_db_public_key_path:      "./keys/db-vm_key.pem.pub"
+
 jobs:
   terraform:
     name: "Terraform CI/CD"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
     defaults:
       run:
         working-directory: .
+
     steps:
+
+      # ─────────────────────────────────────────
+      # CI — CHECKOUT & SETUP
+      # ─────────────────────────────────────────
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -31,10 +44,18 @@ jobs:
         with:
           terraform_version: "1.14.6"
 
+      # ─────────────────────────────────────────
+      # CI — SECURITY SCAN
+      # ─────────────────────────────────────────
+
       - name: TFSec Security Scan
         uses: aquasecurity/tfsec-action@v1.0.0
         with:
           soft_fail: true
+
+      # ─────────────────────────────────────────
+      # CI — INIT
+      # ─────────────────────────────────────────
 
       - name: Terraform Init
         run: terraform init
@@ -52,14 +73,86 @@ jobs:
             --account-key ${{ secrets.AZURE_STORAGE_KEY }}
         continue-on-error: true
 
+      # ─────────────────────────────────────────
+      # CI — CODE QUALITY
+      # ─────────────────────────────────────────
+
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
       - name: Terraform Validate
         run: terraform validate
 
+      # ─────────────────────────────────────────
+      # CI — PLAN
+      # ─────────────────────────────────────────
+
       - name: Terraform Plan
-        run: terraform plan -lock=false -input=false -out=tfplan
+        id: plan
+        run: terraform plan -lock=false -input=false -out=tfplan 2>&1 | tee plan_output.txt
+        continue-on-error: true
+
+      - name: Post Plan as PR Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('plan_output.txt', 'utf8');
+            const maxLen = 60000;
+            const truncated = plan.length > maxLen
+              ? plan.substring(0, maxLen) + '\n... (truncated)'
+              : plan;
+            const output = `## Terraform Plan
+            \`\`\`hcl
+            ${truncated}
+            \`\`\`
+            *Pushed by @${{ github.actor }} on \`${{ github.ref }}\`*`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Fail if Plan Failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+      # ─────────────────────────────────────────
+      # CI — COST ESTIMATION
+      # ─────────────────────────────────────────
+
+      - name: Setup Infracost
+        if: github.event_name == 'pull_request'
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+        continue-on-error: true
+
+      - name: Run Infracost
+        if: github.event_name == 'pull_request'
+        run: |
+          infracost breakdown --path . \
+            --format json \
+            --out-file infracost.json
+        continue-on-error: true
+
+      - name: Post Infracost Comment
+        if: github.event_name == 'pull_request'
+        run: |
+          infracost comment github \
+            --path infracost.json \
+            --repo ${{ github.repository }} \
+            --pull-request ${{ github.event.pull_request.number }} \
+            --github-token ${{ secrets.GITHUB_TOKEN }} \
+            --behavior update
+        continue-on-error: true
+
+      # ─────────────────────────────────────────
+      # CD — DEPLOY
+      # ─────────────────────────────────────────
 
       - name: Start VMs before Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -77,3 +170,66 @@ jobs:
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -lock=false -input=false tfplan
+
+      # ─────────────────────────────────────────
+      # CD — POST-DEPLOY HEALTH CHECK
+      # ─────────────────────────────────────────
+
+      - name: Post-Deploy Health Check
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          az login --service-principal \
+            -u ${{ secrets.AZURE_CLIENT_ID }} \
+            -p ${{ secrets.AZURE_CLIENT_SECRET }} \
+            --tenant ${{ secrets.AZURE_TENANT_ID }}
+
+          echo "Waiting 60s for VMs to boot..."
+          sleep 60
+
+          WEB_IP=$(az vm show \
+            --resource-group rg-pfe-cloud \
+            --name web-vm \
+            --show-details \
+            --query privateIps \
+            --output tsv)
+
+          BASTION_IP=$(az vm show \
+            --resource-group rg-pfe-cloud \
+            --name bastion-vm \
+            --show-details \
+            --query publicIps \
+            --output tsv)
+
+          echo "Bastion IP: $BASTION_IP"
+          echo "Web VM private IP: $WEB_IP"
+
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            --max-time 10 \
+            http://$BASTION_IP || echo "000")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Health check passed — HTTP $HTTP_CODE"
+          else
+            echo "Health check returned HTTP $HTTP_CODE — VM may still be booting"
+          fi
+        continue-on-error: true
+
+      - name: Notify Success
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && success()
+        run: |
+          echo "================================================"
+          echo " DEPLOYMENT SUCCESSFUL"
+          echo " Commit : ${{ github.sha }}"
+          echo " Actor  : ${{ github.actor }}"
+          echo " Branch : ${{ github.ref }}"
+          echo "================================================"
+
+      - name: Notify Failure
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && failure()
+        run: |
+          echo "================================================"
+          echo " DEPLOYMENT FAILED"
+          echo " Commit : ${{ github.sha }}"
+          echo " Actor  : ${{ github.actor }}"
+          echo " Check the logs above for details"
+          echo "================================================"
